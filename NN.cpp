@@ -60,7 +60,7 @@ int main()
     cv::Mat resized_Img;
     int input_size=30000;
     int n_pixels=100; // the images going to have size 100x100
-    int L1_out=1; //the output size for the first layer
+    int L1_out=50; //the output size for the first layer
     int L2_out=10; //the output size for the second layer
     std::srand((unsigned int) time(0)); //set the seed for random numbers
 
@@ -70,14 +70,19 @@ int main()
     std::string path = "./Objetos_segmentados";//the path for the trainning images of each class
     data=Get_Data_Matrix(path, n_pixels,input_size);//all the data is in this Matrix, each row represent an image
 
-    Eigen::MatrixXf Layer1 = Eigen::MatrixXf::Random(input_size+1, L1_out);
+    Eigen::MatrixXf Layer1 = Eigen::MatrixXf::Random(input_size+1, L1_out+1);
+    Eigen::MatrixXf Layer2 = Eigen::MatrixXf::Random(L1_out+1, L2_out);
 
     for (int i = 0; i <= 149; i++) {
          //aux=data.block(i,1,1,30000);
          aux=data.row(i);
     }
-    Eigen::RowVectorXf y1=data.row(3)*Layer1;
-    Eigen::RowVectorXf y2=1/(1+y1.array().exp());
+    //First layer
+    Eigen::RowVectorXf f1=aux*Layer1;
+    Eigen::RowVectorXf y1=1/(1+f1.array().exp());
+    //Second layer
+    Eigen::RowVectorXf f2=y1*Layer2;
+    Eigen::RowVectorXf y2=1/(1+f2.array().exp());
     std::cout<< y1 << std::endl;
     std::cout<< y2<<std::endl;
     //print_path("hola");
