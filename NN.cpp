@@ -49,11 +49,8 @@ Eigen::MatrixXf Get_Data_Matrix(std::string path, int n_pixels, int input){
 Eigen::RowVectorXf LayerOutput(Eigen::MatrixXf& layer, Eigen::RowVectorXf &input_layer){//This function generate the output from current layer
     //input layer is the signal input or the output from the previous layer
     //layer is the matrix with the actual biases and weights from the current layer
-
-    Eigen::RowVectorXf v_one(1); // this vector represent the signal input for the bias
-    v_one << 1; //the value is 1 and going to be concatenated with the input for each layer
-    Eigen::RowVectorXf Aux(v_one.size()+input_layer.size()); //aux=[1 input layer] aux is the concatenated vector with 1 (the input for the bias)
-    Aux << v_one, input_layer; //adding input for bias
+    Eigen::RowVectorXf Aux(1+input_layer.size()); //aux=[1 input layer] aux is the concatenated vector with 1 (the input for the bias)
+    Aux << 1, input_layer; //adding input for bias
     Eigen::MatrixXf layerT=layer.transpose();//tranpose the matrix
     Eigen::RowVectorXf output=Aux*layerT;
     Eigen::RowVectorXf sigmoid_out=1/(1+output.array().exp());
@@ -66,7 +63,8 @@ void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& 
     Eigen::MatrixXf L2_ant,nablaL2;
     Eigen::MatrixXf L1_next=Layer1;
     Eigen::MatrixXf L2_next=Layer2;
-    Eigen::RowVectorXf t(10),y1,y2,delta,aux,temp;
+    Eigen::RowVectorXf t(10),y1,y2,delta,aux, v_1(10);
+    v_1<<1,1,1,1,1 ,1,1,1,1,1;
     Eigen::VectorXf deltaT;
     int target,l1_in,l2_in,l1_out,l2_out;
     //l1_in=Layer1.rows();
@@ -85,19 +83,30 @@ void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& 
             y1=LayerOutput(Layer1, aux );
             y2=LayerOutput(Layer2, y1);
             t(target)=1;//get the target
-            temp=1-y2.array();
-            delta=y2.cwiseProduct(temp);
+
+            delta=y2.cwiseProduct(v_1-y2);
             delta=2*delta.cwiseProduct(t-y2);
             deltaT=delta.transpose();
-            Er2=deltaT*y1;
-            temp=1-y1.array();
+
+            Eigen::RowVectorXf temp(1+y1.size());
+            temp<<1,y1;
+            Er2=deltaT*temp;
+            temp=1-temp.array();
+            temp=temp.cwiseProduct(temp);
             delta=delta*Layer2;
-            delta=delta.cwiseProduct(y1);
+
+            std::cout<<"Dimensiones y1:"<<y1.rows()<<"X"<<y1.cols()<<std::endl;
+            std::cout<<"Dimensiones E2:"<<Er2.rows()<<"X"<<Er2.cols()<<std::endl;
+            std::cout<<"Dimensiones delta:"<<delta.rows()<<"X"<<delta.cols()<<std::endl;
+            std::cout<<"Dimensiones temp:"<<temp.rows()<<"X"<<temp.cols()<<std::endl;
+
             delta=delta.cwiseProduct(temp);
             deltaT=delta.transpose();
             Er1=deltaT*aux;
-            nablaL1=Er1/150;
-            nablaL2=Er2/150;
+            std::cout<<"Dimensiones E1:"<<Er1.rows()<<"X"<<Er1.cols()<<std::endl;
+
+            //nablaL1=Er1/150;
+            //nablaL2=Er2/150;
             //delta=2*(t-y2).*y2.*(1-y2);Er2=delta.
         }
     }
@@ -127,7 +136,9 @@ int main()
          aux=data.row(i);
     }
     y1=LayerOutput(Layer1, aux);
+    std::cout<<"Dimensiones y1:"<<y1.rows()<<"X"<<y1.cols()<<std::endl;
     y2=LayerOutput(Layer2,y1);
+    std::cout<<"Dimensiones y2:"<<y2.rows()<<"X"<<y2.cols()<<std::endl;
     std::cout<< y2 << std::endl;
     Trainning(data, Layer1,Layer2, 1, 0.2, 0, 0);
     return 0;
