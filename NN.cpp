@@ -57,14 +57,19 @@ Eigen::RowVectorXf LayerOutput(Eigen::MatrixXf& layer, Eigen::RowVectorXf &input
     return sigmoid_out;
 }
 
+Eigen::RowVectorXf Get_delta(Eigen::RowVectorXf& v, Eigen::RowVectorXf& y){
+    Eigen::RowVectorXf dif=1-y.array();
+    Eigen::RowVectorXf y_new = y.cwiseProduct(dif);
+    Eigen::RowVectorXf final_v= v.cwiseProduct(y_new);
+    return final_v;
+}
 
 void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& Layer2, int epoch, float n, float mu, float epsilon){
     Eigen::MatrixXf L1_ant,nablaL1,Er1,Er2;
     Eigen::MatrixXf L2_ant,nablaL2;
     Eigen::MatrixXf L1_next=Layer1;
     Eigen::MatrixXf L2_next=Layer2;
-    Eigen::RowVectorXf t(10),y1,y2,delta,aux, v_1(10);
-    v_1<<1,1,1,1,1 ,1,1,1,1,1;
+    Eigen::RowVectorXf t(10),y1,y2,delta,aux,temp1;
     Eigen::VectorXf deltaT;
     int target,l1_in,l2_in,l1_out,l2_out;
     //l1_in=Layer1.rows();
@@ -79,36 +84,36 @@ void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& 
         for(int j=0; j<=149; j++){
             target=j/15;//it gives array position for the target
             t<<0,0,0,0,0 ,0,0,0,0,0;
-            aux=data.row(j);
-            y1=LayerOutput(Layer1, aux );
-            y2=LayerOutput(Layer2, y1);
             t(target)=1;//get the target
 
-            delta=y2.cwiseProduct(v_1-y2);
-            delta=2*delta.cwiseProduct(t-y2);
+            aux=data.row(j);
+            y1=LayerOutput(Layer1, aux);
+            y2=LayerOutput(Layer2, y1);
+
+            temp1=2*(t-y2);
+            delta=Get_delta(temp1, y2);
             deltaT=delta.transpose();
 
             Eigen::RowVectorXf temp(1+y1.size());
             temp<<1,y1;
             Er2=deltaT*temp;
-            temp=1-temp.array();
-            temp=temp.cwiseProduct(temp);
-            delta=delta*Layer2;
 
-            std::cout<<"Dimensiones y1:"<<y1.rows()<<"X"<<y1.cols()<<std::endl;
-            std::cout<<"Dimensiones E2:"<<Er2.rows()<<"X"<<Er2.cols()<<std::endl;
-            std::cout<<"Dimensiones delta:"<<delta.rows()<<"X"<<delta.cols()<<std::endl;
-            std::cout<<"Dimensiones temp:"<<temp.rows()<<"X"<<temp.cols()<<std::endl;
-
-            delta=delta.cwiseProduct(temp);
+            //temp=1-temp.array();
+            //temp=temp.cwiseProduct(temp);
+            temp1=delta*Layer2;
+            delta=Get_delta(temp1, temp);
+            //std::cout<<"Dimensiones y1:"<<y1.rows()<<"X"<<y1.cols()<<std::endl;
             deltaT=delta.transpose();
-            Er1=deltaT*aux;
-            std::cout<<"Dimensiones E1:"<<Er1.rows()<<"X"<<Er1.cols()<<std::endl;
+            Eigen::RowVectorXf temp2(1+aux.size());
+            temp2<<1,aux;
+            Er1=deltaT*temp2;
+            Er1=Er1.bottomRows(Er1.rows()-1);
 
-            //nablaL1=Er1/150;
-            //nablaL2=Er2/150;
-            //delta=2*(t-y2).*y2.*(1-y2);Er2=delta.
+            //std::cout<<"Dimensiones E1:"<<Er1.rows()<<"X"<<Er1.cols()<<std::endl;
+            //std::cout<<"Dimensiones L1:"<<Layer1.rows()<<"X"<<Layer1.cols()<<std::endl;
+
         }
+        std::cout<<"Epoch:"<<i<<std::endl;
     }
 }
 
