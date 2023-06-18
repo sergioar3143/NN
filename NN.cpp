@@ -51,25 +51,27 @@ Eigen::RowVectorXf LayerOutput(Eigen::MatrixXf& layer, Eigen::RowVectorXf &input
     //layer is the matrix with the actual biases and weights from the current layer
     Eigen::RowVectorXf Aux(1+input_layer.size()); //aux=[1 input layer] aux is the concatenated vector with 1 (the input for the bias)
     Aux << 1, input_layer; //adding input for bias
-    Eigen::MatrixXf layerT=layer.transpose();//tranpose the matrix
-    Eigen::RowVectorXf output=Aux*layerT;
+    //Eigen::MatrixXf layerT=layer.transpose();//tranpose the matrix
+    Eigen::RowVectorXf output=-Aux*layer.transpose();
     Eigen::RowVectorXf sigmoid_out=1/(1+output.array().exp());
     return sigmoid_out;
 }
 
-Eigen::RowVectorXf Get_delta(Eigen::RowVectorXf& v, Eigen::RowVectorXf& y){
+Eigen::RowVectorXf Get_delta(const Eigen::RowVectorXf& v, Eigen::RowVectorXf& y){
     Eigen::RowVectorXf dif=1-y.array();
-    Eigen::RowVectorXf y_new = y.cwiseProduct(dif);
-    Eigen::RowVectorXf final_v= v.cwiseProduct(y_new);
+    //Eigen::RowVectorXf y_new = y.cwiseProduct(dif);
+    //Eigen::RowVectorXf final_v= v.cwiseProduct(y_new);
+    //Eigen::RowVectorXf final_v = v.cwiseProduct((1 - y.array()).cwiseProduct(y));
+    Eigen::RowVectorXf final_v = v.cwiseProduct(dif.cwiseProduct(y));
     return final_v;
 }
 
 Eigen::MatrixXf Get_image_gradient(Eigen::RowVectorXf& delta, Eigen::RowVectorXf& input_layer){
-    Eigen::VectorXf deltaT=delta.transpose();
+    //Eigen::VectorXf deltaT=delta.transpose();
     Eigen::MatrixXf E;
     Eigen::RowVectorXf bias_input(1+input_layer.size());
     bias_input<<1,input_layer;
-    E=deltaT*bias_input;
+    E=delta.transpose()*bias_input;
     return E;
 }
 
@@ -78,8 +80,9 @@ void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& 
     Eigen::MatrixXf L2_ant,nablaL2;
     Eigen::MatrixXf L1_next=Layer1;
     Eigen::MatrixXf L2_next=Layer2;
-    Eigen::RowVectorXf t(10),y1,y2,delta,aux,temp1;
-    Eigen::VectorXf deltaT;
+    Eigen::RowVectorXf t(10),y1,y2,delta,aux,temp1,t2;
+    t<<0,0,0,0,0,0,0,0,0,0;
+    //Eigen::VectorXf deltaT;
     int target,l1_in,l2_in,l1_out,l2_out;
     //l1_in=Layer1.rows();
     //Eigen::MatrixXf Layer2 = Eigen::MatrixXf::Random(L2_out, L1_out+1);
@@ -92,44 +95,45 @@ void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& 
         nablaL2=Eigen::MatrixXf::Zero(Layer2.rows(),Layer2.cols());
         for(int j=0; j<=149; j++){
             target=j/15;//it gives array position for the target
-            t<<0,0,0,0,0 ,0,0,0,0,0;
-            t(target)=1;//get the target
+            t2=t;
+            t2(target)=1;//get the target
+            //std::cout<<t2<<std::endl;
 
             aux=data.row(j); //get data from an image
             y1=LayerOutput(Layer1, aux); //get the output for the first layer
             y2=LayerOutput(Layer2, y1); //get the output for the second layer
 
-            temp1=2*(t-y2);
-            delta=Get_delta(temp1, y2);
-
+            //temp1=2*(t-y2);
+            delta=Get_delta(2*(t2-y2), y2);
             //deltaT=delta.transpose();
-            Eigen::RowVectorXf temp(1+y1.size());
-            temp<<1,y1;
+
+            //Last changes
+            //Eigen::RowVectorXf temp(1+y1.size());
+            //temp<<1,y1;
+
             //Er2=deltaT*temp;
             Er2=Get_image_gradient(delta,y1);
 
-            temp1=delta*Layer2;
-            delta=Get_delta(temp1, temp);
+            //temp1=delta*Layer2;
+            delta=Get_delta(delta*Layer2, (Eigen::RowVectorXf(1+y1.size())<<1,y1).finished() );
 
-            deltaT=delta.transpose();
-            Eigen::RowVectorXf temp2(1+aux.size());
-            temp2<<1,aux;
-            Er1=deltaT*temp2;
-            //std::cout<<"Error:"<<Er1.rows()<<std::endl;
-
-            //Er1=Er1.bottomRows(Er1.rows()-1);
-            Eigen::MatrixXf Er12=Er1.bottomRows(Er1.rows()-1);
+            //Eigen::RowVectorXf temp2(1+aux.size());
+            //temp2<<1,aux;
+            //Er1=delta.transpose()*temp2;
+            Er1=(delta.transpose()*(Eigen::RowVectorXf(1+aux.size())<<1,aux).finished()).bottomRows(nablaL1.rows());
+            //Last changes number 2
+            //Eigen::MatrixXf Er12=Er1.bottomRows(nablaL1.rows());
             //std::cout<<"Error:"<<std::endl;
 
-            nablaL1=nablaL1+Er12/150;
-            nablaL2=nablaL2+Er2/150;
+            nablaL1=nablaL1+Er1;
+            nablaL2=nablaL2+Er2;
 
             //std::cout<<"Dimensiones E1:"<<Er1.rows()<<"X"<<Er1.cols()<<std::endl;
             //std::cout<<"Dimensiones L1:"<<Layer1.rows()<<"X"<<Layer1.cols()<<std::endl;
 
         }
-        L2_next=Layer2+n*nablaL2;
-        L1_next=Layer1+n*nablaL1;
+        L2_next=Layer2+n*nablaL2/150;
+        L1_next=Layer1+n*nablaL1/150;
         std::cout<<"Epoch:"<<i<<std::endl;
     }
 }
@@ -138,9 +142,9 @@ void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& 
 int main()
 {
     cv::Mat resized_Img;
-    int input_size=480000;
-    int n_pixels=400; // the images going to have size 100x100
-    int L1_out=50; //the output size for the first layer
+    int input_size=40*40*3;
+    int n_pixels=40; // the images going to have size 100x100
+    int L1_out=25; //the output size for the first layer
     int L2_out=10; //the output size for the second layer
     std::srand((unsigned int) time(0)); //set the seed for random numbers
 
@@ -162,10 +166,16 @@ int main()
     y2=LayerOutput(Layer2,y1);
     std::cout<<"Dimensiones y2:"<<y2.rows()<<"X"<<y2.cols()<<std::endl;
     std::cout<< y2 << std::endl;
-    Trainning(data, Layer1,Layer2, 10, 0.2, 0, 0);
-    y1=LayerOutput(Layer1, aux);
-    y2=LayerOutput(Layer2,y1);
-    std::cout<< y2 << std::endl;
+    Trainning(data, Layer1,Layer2, 200, 0.3, 0, 0);
+    for (int i = 0; i <= 149; i++) {
+         aux=data.row(i);
+         y1=LayerOutput(Layer1, aux);
+         y2=LayerOutput(Layer2, y1);
+         std::cout<<"The output from "<<i<< " is "<< y2 << std::endl;
+    }
+    //y1=LayerOutput(Layer1, aux);
+    //y2=LayerOutput(Layer2,y1);
+    //std::cout<< y2 << std::endl;
     return 0;
 //cv::resize(inImg, outImg, cv::Size(), 0.75, 0.75);
 }
