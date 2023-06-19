@@ -126,11 +126,6 @@ int main()
     Eigen::MatrixXf Layer1 = Eigen::MatrixXf::Random(L1_out, input_size+1);
     Eigen::MatrixXf Layer2 = Eigen::MatrixXf::Random(L2_out, L1_out+1);
 
-    for (int i = 0; i <= 149; i++) {
-         //aux=data.block(i,1,1,30000);
-         aux=data.row(i);
-    }
-
     int epoch=200;//epoch number for the trainning
     float n=0.2;//learning rate
     float mu=0.4;
@@ -145,10 +140,10 @@ int main()
     float max ; //=mat.colwise().sum().maxCoeff(&maxIndex);
     for (int i = 0; i < data.rows(); i++) {
          aux=data.row(i);
-         y1=LayerOutput(Layer1, aux);
-         y2=LayerOutput(Layer2, y1);
-         max=y2.maxCoeff(&maxIndex);
-         std::cout<<"The class from "<<i<< " is "<< maxIndex << " with the output "<< y2 <<std::endl;
+         y1=LayerOutput(Layer1, aux);//get the first layer output
+         y2=LayerOutput(Layer2, y1);//get the second layer output
+         max=y2.maxCoeff(&maxIndex);//check for the class with the maximum value
+         std::cout<<"The class from "<<i<< "image is from class "<< maxIndex << " with the output "<< y2 <<std::endl;//print information
     }
     return 0;
 }
