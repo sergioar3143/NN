@@ -3,9 +3,6 @@
 #include <iostream>
 #include <experimental/filesystem>
 #include <eigen3/Eigen/Dense>
-//#include <Eigen/Dense>
-//namespace fs = std::filesystem;
-//using namespace std;
 namespace fs = std::experimental::filesystem;
 
 //function that take one string path in which the image is located and then return one vector with the image data
@@ -18,9 +15,7 @@ Eigen::RowVectorXf Get_Vec(std::string Image_path, int n_pixels){
     cv::resize(img, resized_Img, cv::Size(n_pixels, n_pixels), cv::INTER_CUBIC);//resize the image to nxn using the cubic interpolation
     cv::Mat vector=resized_Img.reshape(1,resized_Img.total());//change the RGB matrix to 3 vectors RGB
     vector=resized_Img.reshape(1,vector.total());//change all the values to one vector with all the information
-    //std::cout<< "vector dimension: "<< vector.rows<<" x "<<vector.cols<<std::endl;
     Eigen::Map<Eigen::RowVectorXf> vecX(vector.ptr<float>(), vector.rows);//Change Mat vector to Eigen vector
-    //std::cout<< vecX(1000)<< " = " << vector.at<float>(1000,0)<<std::endl;
     return vecX;
 }
 
@@ -52,85 +47,60 @@ Eigen::MatrixXf Get_Data_Matrix(std::string path, int n_pixels, int input, int n
 Eigen::RowVectorXf LayerOutput(Eigen::MatrixXf& layer, Eigen::RowVectorXf &input_layer){//This function generate the output from current layer
     //input layer is the signal input or the output from the previous layer
     //layer is the matrix with the actual biases and weights from the current layer
-    Eigen::RowVectorXf Aux(1+input_layer.size()); //aux=[1 input layer] aux is the concatenated vector with 1 (the input for the bias)
-    Aux << 1, input_layer; //adding input for bias
+    //Eigen::RowVectorXf Aux(1+input_layer.size()); //aux=[1 input layer] aux is the concatenated vector with 1 (the input for the bias)
+    //Aux << 1, input_layer; //adding input for bias
     //Eigen::MatrixXf layerT=layer.transpose();//tranpose the matrix
-    Eigen::RowVectorXf output=-Aux*layer.transpose();
+    Eigen::RowVectorXf output=-(Eigen::RowVectorXf(1+input_layer.size())<<1,input_layer).finished()*layer.transpose();
     Eigen::RowVectorXf sigmoid_out=1/(1+output.array().exp());
     return sigmoid_out;
 }
 
-Eigen::RowVectorXf Get_delta(const Eigen::RowVectorXf& v, Eigen::RowVectorXf& y){
+Eigen::RowVectorXf Get_delta(const Eigen::RowVectorXf& v, Eigen::RowVectorXf& y){//get (1-y).y.v
     Eigen::RowVectorXf dif=1-y.array();
-    //Eigen::RowVectorXf y_new = y.cwiseProduct(dif);
-    //Eigen::RowVectorXf final_v= v.cwiseProduct(y_new);
-    //Eigen::RowVectorXf final_v = v.cwiseProduct((1 - y.array()).cwiseProduct(y));
     Eigen::RowVectorXf final_v = v.cwiseProduct(dif.cwiseProduct(y));
     return final_v;
 }
 
-Eigen::MatrixXf Get_image_gradient(Eigen::RowVectorXf& delta, Eigen::RowVectorXf& input_layer){
-    //Eigen::VectorXf deltaT=delta.transpose();
-    Eigen::MatrixXf E;
-    Eigen::RowVectorXf bias_input(1+input_layer.size());
-    bias_input<<1,input_layer;
-    E=delta.transpose()*bias_input;
-    return E;
-}
 
 void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& Layer2, int epoch, float n, float mu, float epsilon){
     Eigen::MatrixXf L1_ant,nablaL1,Er1,Er2;
     Eigen::MatrixXf L2_ant,nablaL2;
     Eigen::MatrixXf L1_next=Layer1;
     Eigen::MatrixXf L2_next=Layer2;
-    Eigen::RowVectorXf t(10),y1,y2,delta,aux,temp1,t2;
+    Eigen::RowVectorXf t(10),y1,y2,delta,aux,t2;
     t<<0,0,0,0,0,0,0,0,0,0;
     //Eigen::VectorXf deltaT;
     int target,l1_in,l2_in,l1_out,l2_out;
     //l1_in=Layer1.rows();
     //Eigen::MatrixXf Layer2 = Eigen::MatrixXf::Random(L2_out, L1_out+1);
     for(int i=0; i< epoch; i++){
-        L1_ant=Layer1;
-        L2_ant=Layer2;
+        L1_ant=Layer1; //variable for saving previous layer1 weights
+        L2_ant=Layer2; //variable for saving previous layer2 weights
         Layer1=L1_next;
         Layer2=L2_next;
         nablaL1=Eigen::MatrixXf::Zero(Layer1.rows(),Layer1.cols());
         nablaL2=Eigen::MatrixXf::Zero(Layer2.rows(),Layer2.cols());
         for(int j=0; j<=149; j++){
-            target=j/15;//it gives array position for the target
-            t2=t;
+            target=j/15;//it gives array position of the target
+            t2=t;//inicialize with zeros
             t2(target)=1;//get the target
-            //std::cout<<t2<<std::endl;
 
             aux=data.row(j); //get data from an image
             y1=LayerOutput(Layer1, aux); //get the output for the first layer
             y2=LayerOutput(Layer2, y1); //get the output for the second layer
 
-            //temp1=2*(t-y2);
-            delta=Get_delta(2*(t2-y2), y2);
-            //deltaT=delta.transpose();
+            delta=Get_delta(2*(t2-y2), y2);//Get delta for Layer 2
+            Er2= delta.transpose()*(Eigen::RowVectorXf(1+y1.size())<<1,y1).finished();//get gradient for layer 2
 
-            //Last changes
-            //Eigen::RowVectorXf temp(1+y1.size());
-            //temp<<1,y1;
+            delta=Get_delta(delta*Layer2, (Eigen::RowVectorXf(1+y1.size())<<1,y1).finished() ); //get delta for Layer1
+            Er1=(delta.transpose()*(Eigen::RowVectorXf(1+aux.size())<<1,aux).finished()).bottomRows(nablaL1.rows()); //get gradiente for layer 1
 
-            //Er2=deltaT*temp;
-            Er2=Get_image_gradient(delta,y1);
-
-            //temp1=delta*Layer2;
-            delta=Get_delta(delta*Layer2, (Eigen::RowVectorXf(1+y1.size())<<1,y1).finished() );
-
-            //Eigen::RowVectorXf temp2(1+aux.size());
-            //temp2<<1,aux;
-            //Er1=delta.transpose()*temp2;
-            Er1=(delta.transpose()*(Eigen::RowVectorXf(1+aux.size())<<1,aux).finished()).bottomRows(nablaL1.rows());
-
-            nablaL1=nablaL1+Er1;
-            nablaL2=nablaL2+Er2;
+            nablaL1=nablaL1+Er1; //add the gradient of layer1 for each image
+            nablaL2=nablaL2+Er2; //add the gradient of layer2 for each image
 
         }
-        L2_next=Layer2+n*nablaL2/150+mu*(Layer2-L2_ant)+epsilon*Eigen::MatrixXf::Random(Layer2.rows(), Layer2.cols());
-        L1_next=Layer1+n*nablaL1/150+mu*(Layer1-L1_ant)+epsilon*Eigen::MatrixXf::Random(Layer1.rows(), Layer1.cols());
+        L2_next=Layer2+n*nablaL2/150+mu*(Layer2-L2_ant)+epsilon*Eigen::MatrixXf::Random(Layer2.rows(), Layer2.cols());//update weights in layer1
+        L1_next=Layer1+n*nablaL1/150+mu*(Layer1-L1_ant)+epsilon*Eigen::MatrixXf::Random(Layer1.rows(), Layer1.cols());//update weights in layer2
         std::cout<<"Epoch:"<<i<<std::endl;
     }
 }
@@ -138,7 +108,7 @@ void Trainning(Eigen::MatrixXf& data, Eigen::MatrixXf& Layer1, Eigen::MatrixXf& 
 
 int main()
 {
-    cv::Mat resized_Img;
+    cv::Mat resized_Img;//variable for resized images
     int input_size=60*60*3;
     int n_pixels=60; // the images going to have size 100x100
     int L1_out=30; //the output size for the first layer
@@ -160,20 +130,18 @@ int main()
          //aux=data.block(i,1,1,30000);
          aux=data.row(i);
     }
-    y1=LayerOutput(Layer1, aux);
-    y2=LayerOutput(Layer2,y1);
-    std::cout<< y2 << std::endl;
 
-    int epoch=600;//epoch number for the trainning
+    int epoch=200;//epoch number for the trainning
     float n=0.2;//learning rate
     float mu=0.4;
-    float epsilon=0.001;
+    float epsilon=0.001;//Max value for the noise
+    std::cout<< "Start trainning with "<<epoch <<"epochs"<< std::endl;
 
-    Trainning(data, Layer1,Layer2, epoch, n, mu, epsilon);
+    Trainning(data, Layer1,Layer2, epoch, n, mu, epsilon);//Trainning layer1 and layer2 for epoch with data and parameters n, mu and epsilon
 
     n_img=20;//change the number of images to 20
     data=Get_Data_Matrix(path, n_pixels,input_size,n_img, n_class);//all the data is in this Matrix, each row represent an image
-    Eigen::Index   maxIndex;
+    Eigen::Index   maxIndex;//variable for saving the index
     float max ; //=mat.colwise().sum().maxCoeff(&maxIndex);
     for (int i = 0; i < data.rows(); i++) {
          aux=data.row(i);
