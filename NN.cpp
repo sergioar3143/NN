@@ -126,7 +126,7 @@ int main()
     Eigen::MatrixXf Layer1 = Eigen::MatrixXf::Random(L1_out, input_size+1);
     Eigen::MatrixXf Layer2 = Eigen::MatrixXf::Random(L2_out, L1_out+1);
 
-    int epoch=20;//epoch number for the trainning
+    int epoch=1200;//epoch number for the trainning
     float n=0.2;//learning rate
     float mu=0.4;
     float epsilon=0.001;//Max value for the noise
