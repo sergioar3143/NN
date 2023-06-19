@@ -126,24 +126,81 @@ int main()
     Eigen::MatrixXf Layer1 = Eigen::MatrixXf::Random(L1_out, input_size+1);
     Eigen::MatrixXf Layer2 = Eigen::MatrixXf::Random(L2_out, L1_out+1);
 
-    int epoch=200;//epoch number for the trainning
+    int epoch=20;//epoch number for the trainning
     float n=0.2;//learning rate
     float mu=0.4;
     float epsilon=0.001;//Max value for the noise
-    std::cout<< "Start trainning with "<<epoch <<"epochs"<< std::endl;
-
+    std::cout<<"Start trainning"<<std::endl;
     Trainning(data, Layer1,Layer2, epoch, n, mu, epsilon);//Trainning layer1 and layer2 for epoch with data and parameters n, mu and epsilon
 
     n_img=20;//change the number of images to 20
     data=Get_Data_Matrix(path, n_pixels,input_size,n_img, n_class);//all the data is in this Matrix, each row represent an image
     Eigen::Index   maxIndex;//variable for saving the index
     float max ; //=mat.colwise().sum().maxCoeff(&maxIndex);
-    for (int i = 0; i < data.rows(); i++) {
-         aux=data.row(i);
-         y1=LayerOutput(Layer1, aux);//get the first layer output
-         y2=LayerOutput(Layer2, y1);//get the second layer output
-         max=y2.maxCoeff(&maxIndex);//check for the class with the maximum value
-         std::cout<<"The class from "<<i<< "image is from class "<< maxIndex << " with the output "<< y2 <<std::endl;//print information
+    //for (int i = 0; i < data.rows(); i++) {
+      //   aux=data.row(i);
+      //   y1=LayerOutput(Layer1, aux);//get the first layer output
+      //   y2=LayerOutput(Layer2, y1);//get the second layer output
+      //   max=y2.maxCoeff(&maxIndex);//check for the class with the maximum value
+      //   std::cout<<"The class from "<<i<< "image is from class "<< maxIndex << " with the output "<< y2 <<std::endl;//print information
+    //}
+    int i=0;
+    int target=0;
+    std::string result;
+    for (const auto & entry : fs::directory_iterator(path)){
+        std::string path2=entry.path(); //Save the multiple directories in path2
+        for (const auto & entry2 : fs::directory_iterator(path2)){ //then in path2 check the images in each directory
+            std::string Image_path=entry2.path(); //get the path for each image
+            cv::Mat img_original = cv::imread(Image_path);
+            cv::Mat img = img_original.clone();
+            cv::Mat resized_Img;//Declare resized_Img
+            cv::resize(img, resized_Img, cv::Size(3*n_pixels, 3*n_pixels), cv::INTER_CUBIC);//resize the image to nxn using the cubic interpolation
+            cv::imshow("Image",resized_Img);
+            aux=data.row(i);
+            y1=LayerOutput(Layer1, aux);//get the first layer output
+            y2=LayerOutput(Layer2, y1);//get the second layer output
+            max=y2.maxCoeff(&maxIndex);//check for the class with the maximum value
+            switch(maxIndex) {//the
+                case 0: //Bloque de instrucciones 1;
+                    result="Chocolate cookies";
+                break;
+                case 1: //Bloque de instrucciones 2;
+                    result="Red Mug";
+                break;
+                case 2: //Bloque de instrucciones 3;
+                    result="Apple Juice";
+                break;
+                case 3: //Bloque de instrucciones 1;
+                    result="Blue Spoon";
+                break;
+                case 4: //Bloque de instrucciones 2;
+                    result="Blue Bowl";
+                break;
+                case 5: //Bloque de instrucciones 3;
+                    result="Orange Juice";
+                break;
+                case 6: //Bloque de instrucciones 1;
+                    result="Red Lego";
+                break;
+                case 7: //Bloque de instrucciones 2;
+                    result="Orange Knife";
+                break;
+                case 8: //Bloque de instrucciones 3;
+                    result="Blue Mug";
+                break;
+                case 9: //Bloque de instrucciones 1;
+                    result="Blue Lego";
+                break;
+                default: //Bloque de instrucciones por defecto;
+                    result="Error";
+            }
+            std::cout<<"The class from image "<<i<< " is "<< result <<std::endl;//print information
+            std::cout<<"The output from the Neural Network is "<<y2<<std::endl;
+            i++; //increase class number
+            cv::waitKey(0);
+            std::cout << "Press Enter to continue..." << std::endl;
+        }
+        target++;
     }
     return 0;
 }
