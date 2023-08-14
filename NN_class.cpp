@@ -87,7 +87,18 @@ class NeuralNetwork{
         }
         return y;
     }
-    
+    void Backpropagate(Eigen::VectorXf x, Eigen::VectorXf target, std::vector<Eigen::MatrixXf> &nabla_w, std::vector<Eigen::VectorXf> &nabla_b){
+        std::vector<Eigen::VectorXf> y= Feedforward_verbose(x);
+        int n_layer=Biases.size();
+        std::cout<<"LLego aquí"<<std::endl; //delta = (y[-1] - yt)*y[-1]*(1 - y[-1])
+        Eigen::VectorXf dif=1-y[n_layer-1].array();
+        Eigen::VectorXf delta =dif.cwiseProduct(y[n_layer-1].cwiseProduct(y[n_layer-1]-target)).finished();
+        //delta=delta.cwiseProduct(dif);
+        //Eigen::VectorXf delta = y[n_layer-1].cwiseProduct(y[n_layer-1] - target);
+        //delta = delta.cwiseProduct(1 - y[n_layer-1].array());
+        std::cout<<"delta ="<<std::endl;
+        std::cout<<delta<<std::endl;
+    }
 
 };
 
@@ -99,8 +110,12 @@ int main (int, char** argv){
     nueva.WriteFile();
     Eigen::VectorXf x(5);
     x<<1.0,1.0,1.0,1.0,1.0;
-    std::cout<<x<<std::endl;
-    nueva.Feedforward_verbose(x);
+    Eigen::VectorXf target(2);
+    target<<0.0, 0.99;
+    std::vector<Eigen::MatrixXf> nabla_w;
+    std::vector<Eigen::VectorXf> nabla_b;
+    nueva.Feedforward(x);
+    nueva.Backpropagate(x, target, nabla_w, nabla_b);
     return 0;
 
 }
