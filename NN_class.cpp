@@ -129,15 +129,16 @@ Eigen::VectorXf Get_Vec(std::string Image_path, int n_pixels){
     return vecX;
 }
 
-std::vector<Eigen::VectorXf> Get_Data_Matrix(std::string path, int n_pixels, int input, int n_img, int n_class){
+void Get_Data_Matrix(std::string path, std::vector<Eigen::VectorXf> & data, std::vector<Eigen::VectorXf> & target, int n_pixels, int input, int n_img, int n_class){
     //path is the path in which the image are saved
     //input is de size of the vectors that represent each image
     //n_img is the number of image per class that are wanted in the dataMatrix
     //n_class is the number of different classes thta are wanted to clasificate
     Eigen::VectorXf TempVec;
-    std::vector<Eigen::VectorXf> data;
+    //std::vector<Eigen::VectorXf> data;
     int class_n=0;//auxiliar for filling data Matrix
     int count_img=0;//the variable counts the number of image in the class, it helps just to train with 10 images
+    int class_counter=0;
     for (const auto & entry : fs::directory_iterator(path)){
         std::string path2=entry.path(); //Save the multiple directories in path2
         class_n=0;//begin with zero for each class and count the image number for the class
@@ -145,13 +146,19 @@ std::vector<Eigen::VectorXf> Get_Data_Matrix(std::string path, int n_pixels, int
             std::string Image_path=entry2.path(); //get the path for each image
             if(class_n< n_img){ //Save just the first n_img images for each class
                 TempVec=Get_Vec(Image_path, n_pixels); //get the image data in one row vector
+
+                Eigen::VectorXf TempTarget(10);
+                TempTarget<<0,0,0,0,0,   0,0,0,0,0;
+                TempTarget[class_counter]=1;
+                target.push_back(TempTarget);
                 data.push_back(TempVec); //saving data
                 count_img++;//increase the pointer
             }
             class_n++; //increase class number
         }
+        class_counter++;
     }
-    return data;
+    //return data;
 }
 
 
@@ -171,13 +178,14 @@ int main (int, char** argv){
     nueva.Backpropagate(x, target, nabla_w, nabla_b);
 
     std::vector<Eigen::VectorXf> data;//(150, input_size);//declare the matrix with all the data from the trainning images
+    std::vector<Eigen::VectorXf> t;
     int input_size=60*60*3;
     int n_pixels=60; // the images going to have size 100x100
     int n_img=15; //the number of images per class that are wanted in the matrix data, it could change after trainning
     int n_class=10; //the number of classes that are wanted for classificaction, it couldn't be changed
 
     std::string path = "./Objetos_segmentados";//the path for the trainning images of each class
-    data=Get_Data_Matrix(path, n_pixels,input_size,n_img, n_class);//all the data is in this Matrix, each row represent an image
+    Get_Data_Matrix(path,data, t, n_pixels,input_size,n_img, n_class);//all the data is in this Matrix, each row represent an image
 
     std::cout<<data[0].rows()<<std::endl;
     return 0;
