@@ -80,6 +80,7 @@ class NeuralNetwork{
     }
     std::vector<Eigen::VectorXf> Feedforward_verbose(Eigen::VectorXf x ){
         std::vector<Eigen::VectorXf> y;
+        y.push_back(x);
         for(int i=0; i<Weights.size(); i++){
             Eigen::VectorXf z=Weights[i]*x+Biases[i];
             x=1/(1+(-z).array().exp());
@@ -92,15 +93,14 @@ class NeuralNetwork{
         int n_layer=Biases.size();
         nabla_w=Weights;
         nabla_b=Biases;
-        std::cout<<"LLego aquí"<<std::endl; //delta = (y[-1] - yt)*y[-1]*(1 - y[-1])
-        Eigen::VectorXf delta = (y[n_layer-1].cwiseProduct(y[n_layer-1] - target)).cwiseProduct((1 - y[n_layer-1].array()).matrix());
+        Eigen::VectorXf delta = (y[n_layer].cwiseProduct(y[n_layer] - target)).cwiseProduct((1 - y[n_layer].array()).matrix());
         nabla_b[n_layer-1]=delta;
         nabla_w[n_layer-1]=delta*y[n_layer-2].transpose();
-        for(int i=2; i<Weights.size(); i++){
+        for(int i=2; i<=Weights.size(); i++){
             //delta=Weights[n_layer-i+1].transpose()*delta;
-            delta=(( Weights[n_layer-i+1].transpose()*delta ).cwiseProduct( y[n_layer-i] )).cwiseProduct( (1 - y[n_layer-i].array()).matrix() );
+            delta=(( Weights[n_layer-i+1].transpose()*delta ).cwiseProduct( y[n_layer-i+1] )).cwiseProduct( (1 - y[n_layer-i+1].array()).matrix() );
             nabla_b[n_layer-i]=delta;
-            nabla_w[n_layer-i]=delta*y[n_layer-i-1].transpose();
+            nabla_w[n_layer-i]=delta*y[n_layer-i].transpose();
         }
         std::cout<<"delta ="<<std::endl;
         std::cout<<delta<<std::endl;
@@ -122,6 +122,11 @@ int main (int, char** argv){
     std::vector<Eigen::VectorXf> nabla_b;
     nueva.Feedforward(x);
     nueva.Backpropagate(x, target, nabla_w, nabla_b);
+    for(int i=0; i<nabla_b.size(); i++){
+        std::cout<<"--------"<<std::endl;
+        std::cout<<nabla_b[i]<<std::endl;
+    }
+
     return 0;
 
 }
