@@ -106,10 +106,40 @@ class NeuralNetwork{
             nabla_b[n_layer-i]=delta;
             nabla_w[n_layer-i]=delta*y[n_layer-i].transpose();
         }
-        std::cout<<"delta ="<<std::endl;
-        std::cout<<delta<<std::endl;
+        //std::cout<<"delta ="<<std::endl;
+        //std::cout<<delta<<std::endl;
     }
-
+    void Update_with_batch(std::vector<Eigen::VectorXf> data, std::vector<Eigen::VectorXf> t, float eta){
+        std::vector<Eigen::MatrixXf> nw;
+        std::vector<Eigen::VectorXf> nb;
+        int i;
+        for(i=0; i<Weights.size(); i++){
+            Eigen::MatrixXf nw_temp = Eigen::MatrixXf::Zero(Weights[i].rows(), Weights[i].cols());
+            Eigen::VectorXf nb_temp = Eigen::VectorXf::Zero(Biases[i].rows());
+            nw.push_back(nw_temp);
+            nb.push_back(nb_temp);
+        }
+        int M=data.size();
+        std::cout<<"Numero de datos "<<M<<std::endl;
+        //std::vector<Eigen::MatrixXf> delta_w;
+        //std::vector<Eigen::VectorXf> delta_b;
+        std::cout<<"Llego aqui 3"<< std::endl;
+        for(i=0; i< M; i++){
+            std::vector<Eigen::MatrixXf> delta_w;
+            std::vector<Eigen::VectorXf> delta_b;
+            Backpropagate(data[i], t[i], delta_w, delta_b);
+            for(int j=0; j<Weights.size();j++){
+                std::cout<< "Hola" <<std::endl;
+                nw[j]=nw[j]+delta_w[j];
+                nb[j]=nb[j]+delta_b[j];
+            }
+        }
+        std::cout<<"Llego aqui 4"<< std::endl;
+        for(i=0; i<M; i++){
+            Weights[i]=Weights[i]-eta/M*nw[i];
+            Biases[i]=Biases[i]-eta/M*nb[i];
+        }
+    }
 };
 //////////////////
 //End of the class
@@ -129,7 +159,7 @@ Eigen::VectorXf Get_Vec(std::string Image_path, int n_pixels){
     return vecX;
 }
 
-void Get_Data_Matrix(std::string path, std::vector<Eigen::VectorXf> & data, std::vector<Eigen::VectorXf> & target, int n_pixels, int input, int n_img, int n_class){
+void Get_Data(std::string path, std::vector<Eigen::VectorXf> & data, std::vector<Eigen::VectorXf> & target, int n_pixels, int input, int n_img, int n_class){
     //path is the path in which the image are saved
     //input is de size of the vectors that represent each image
     //n_img is the number of image per class that are wanted in the dataMatrix
@@ -161,33 +191,27 @@ void Get_Data_Matrix(std::string path, std::vector<Eigen::VectorXf> & data, std:
     //return data;
 }
 
-
 int main (int, char** argv){
     //std::srand((unsigned int) time(0));
-    std::vector<int> Init_vec={5,3,2};
+    std::vector<int> Init_vec={1875,50,10};
     NeuralNetwork nueva=NeuralNetwork(Init_vec);
-    nueva.PrintLayers();
+    //nueva.PrintLayers();
     nueva.WriteFile();
-    Eigen::VectorXf x(5);
-    x<<1.0,1.0,1.0,1.0,1.0;
-    Eigen::VectorXf target(2);
-    target<<0.0, 0.99;
-    std::vector<Eigen::MatrixXf> nabla_w;
-    std::vector<Eigen::VectorXf> nabla_b;
-    nueva.Feedforward(x);
-    nueva.Backpropagate(x, target, nabla_w, nabla_b);
+    std::cout<<"LLega aquí"<<std::endl;
 
     std::vector<Eigen::VectorXf> data;//(150, input_size);//declare the matrix with all the data from the trainning images
     std::vector<Eigen::VectorXf> t;
-    int input_size=60*60*3;
-    int n_pixels=60; // the images going to have size 100x100
+    int input_size=25*25*3;
+    int n_pixels=25; // the images going to have size 100x100
     int n_img=15; //the number of images per class that are wanted in the matrix data, it could change after trainning
     int n_class=10; //the number of classes that are wanted for classificaction, it couldn't be changed
 
     std::string path = "./Objetos_segmentados";//the path for the trainning images of each class
-    Get_Data_Matrix(path,data, t, n_pixels,input_size,n_img, n_class);//all the data is in this Matrix, each row represent an image
+    Get_Data(path,data, t, n_pixels,input_size,n_img, n_class);//all the data is in this Matrix, each row represent an image
 
-    std::cout<<data[0].rows()<<std::endl;
+    std::cout<<"Llega aquí 2"<<std::endl;
+    float eta=0.1;
+    nueva.Update_with_batch(data, t, eta);
     return 0;
 
 }
