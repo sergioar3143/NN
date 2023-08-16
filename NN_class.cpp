@@ -79,7 +79,7 @@ class NeuralNetwork{
             x=1/(1+(-z).array().exp());
         }
         std::cout<<"Resultado"<<std::endl;
-        std::cout<<x<<std::endl;
+        std::cout<<x.transpose()<<std::endl;
         return x;
     }
     std::vector<Eigen::VectorXf> Feedforward_verbose(Eigen::VectorXf x ){
@@ -99,12 +99,12 @@ class NeuralNetwork{
         nabla_b=Biases;
         Eigen::VectorXf delta = (y[n_layer].cwiseProduct(y[n_layer] - target)).cwiseProduct((1 - y[n_layer].array()).matrix());
         nabla_b[n_layer-1]=delta;
-        nabla_w[n_layer-1]=delta*y[n_layer-2].transpose();
-        for(int i=2; i<=Weights.size(); i++){
+        nabla_w[n_layer-1]=delta*y[n_layer-1].transpose();
+        for(int i=1; i<Weights.size(); i++){
             //delta=Weights[n_layer-i+1].transpose()*delta;
-            delta=(( Weights[n_layer-i+1].transpose()*delta ).cwiseProduct( y[n_layer-i+1] )).cwiseProduct( (1 - y[n_layer-i+1].array()).matrix() );
-            nabla_b[n_layer-i]=delta;
-            nabla_w[n_layer-i]=delta*y[n_layer-i].transpose();
+            delta=(( Weights[n_layer-i].transpose()*delta ).cwiseProduct( y[n_layer-i] )).cwiseProduct( (1 - y[n_layer-i].array()).matrix() );
+            nabla_b[n_layer-i-1]=delta;
+            nabla_w[n_layer-i-1]=delta*y[n_layer-i-1].transpose();
         }
         //std::cout<<"delta ="<<std::endl;
         //std::cout<<delta<<std::endl;
@@ -120,22 +120,18 @@ class NeuralNetwork{
             nb.push_back(nb_temp);
         }
         int M=data.size();
-        std::cout<<"Numero de datos "<<M<<std::endl;
         //std::vector<Eigen::MatrixXf> delta_w;
         //std::vector<Eigen::VectorXf> delta_b;
-        std::cout<<"Llego aqui 3"<< std::endl;
         for(i=0; i< M; i++){
             std::vector<Eigen::MatrixXf> delta_w;
             std::vector<Eigen::VectorXf> delta_b;
             Backpropagate(data[i], t[i], delta_w, delta_b);
             for(int j=0; j<Weights.size();j++){
-                std::cout<< "Hola" <<std::endl;
                 nw[j]=nw[j]+delta_w[j];
                 nb[j]=nb[j]+delta_b[j];
             }
         }
-        std::cout<<"Llego aqui 4"<< std::endl;
-        for(i=0; i<M; i++){
+        for(i=0; i<Weights.size(); i++){
             Weights[i]=Weights[i]-eta/M*nw[i];
             Biases[i]=Biases[i]-eta/M*nb[i];
         }
@@ -192,26 +188,28 @@ void Get_Data(std::string path, std::vector<Eigen::VectorXf> & data, std::vector
 }
 
 int main (int, char** argv){
-    //std::srand((unsigned int) time(0));
-    std::vector<int> Init_vec={1875,50,10};
+    std::vector<int> Init_vec={10800,50,10};
     NeuralNetwork nueva=NeuralNetwork(Init_vec);
-    //nueva.PrintLayers();
-    nueva.WriteFile();
-    std::cout<<"LLega aquí"<<std::endl;
 
     std::vector<Eigen::VectorXf> data;//(150, input_size);//declare the matrix with all the data from the trainning images
     std::vector<Eigen::VectorXf> t;
-    int input_size=25*25*3;
-    int n_pixels=25; // the images going to have size 100x100
+    int input_size=60*60*3;
+    int n_pixels=60; // the images going to have size 100x100
     int n_img=15; //the number of images per class that are wanted in the matrix data, it could change after trainning
     int n_class=10; //the number of classes that are wanted for classificaction, it couldn't be changed
 
     std::string path = "./Objetos_segmentados";//the path for the trainning images of each class
     Get_Data(path,data, t, n_pixels,input_size,n_img, n_class);//all the data is in this Matrix, each row represent an image
 
-    std::cout<<"Llega aquí 2"<<std::endl;
     float eta=0.1;
-    nueva.Update_with_batch(data, t, eta);
+    for(int i=0; i<100; i++){
+        nueva.Update_with_batch(data, t, eta);
+        std::cout<<"Epoch "<<i<< std::endl;
+    }
+    nueva.WriteFile();
+    for(int i=0; i<10  ;i++){
+        nueva.Feedforward(data[i] );
+    }
     return 0;
 
 }
